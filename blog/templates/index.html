@@ -1,0 +1,279 @@
+{% extends "layout.html" %}
+
+{% block header %}
+<style>
+
+    @import url(https://fonts.googleapis.com/css?family=Roboto);
+
+    .modal {
+        text-align: center;
+        padding: 0 !important;
+    }
+
+    .modal:before {
+        content: '';
+        display: inline-block;
+        height: 100%;
+        vertical-align: middle;
+        margin-right: -4px;
+    }
+
+    .modal-dialog {
+        display: inline-block;
+        text-align: left;
+        vertical-align: middle;
+    }
+
+    body {
+        font-family: Roboto, sans-serif;
+    }
+
+    #chart {
+        max-width: 650px;
+        margin: 35px auto;
+    }
+
+    .btn span.glyphicon {
+        opacity: 0;
+    }
+
+    .btn.active span.glyphicon {
+        opacity: 1;
+    }
+
+    .very-low {
+        background-color: white !important;
+        color: black !important;
+    }
+
+    .low {
+        background-color: lightpink !important;
+        color: black !important;
+    }
+
+    .med {
+        background-color: lightcoral !important;
+    }
+
+    .high {
+        background-color: red !important;
+        color: white !important;
+    }
+
+    .very-high {
+        background-color: darkred !important;
+        color: white !important;
+    }
+
+</style>
+{% endblock %}
+
+
+{% block body %}
+
+<div class="contact3-form validate-form" id="chart-parent">
+    <span class="contact3-form-title">
+        DISEASE PREDICTOR
+    </span>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-md-10">
+                <select id="symptom_select" data-placeholder="Select Symptoms..." class="selection-2" name="service"
+                        multiple="multiple">
+                    {% for symptom in symptomList %}
+                    <option>{{ symptom }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="contact3-form-btn" onclick="searchDisease()">
+                    Submit
+                </button>
+            </div>
+            <button class="btn btn-success" onclick="searchSymptom()"
+                    style="margin: 15px; border-radius: 20px; height: 40px; width: 40px;
+                    background-color: yellow;
+                    color: darkgreen;
+                    font-size: 20px">
+                ?
+            </button>
+        </div>
+
+    </div>
+    <div id="chart">
+    </div>
+</div>
+
+<div id="myModal" class="modal fade" tabindex="-1" role="dialog" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-body">
+                <div class="container">
+                    <div class="well text-center">
+
+                        <div id="modalHeader">HOW MUCH?</div>
+                        <br>
+                        <div class="btn-group" role="group" aria-label="Basic example">
+                            <button name="level" type="button" class="btn btn-secondary very-low"
+                                    onclick="addLevel('very-low')"> Not at all
+                            </button>
+                            <button name="level" type="button" class="btn btn-secondary med"
+                                    onclick="addLevel('med')"> Slightly
+                            </button>
+                            <button name="level" type="button" class="btn btn-secondary high"
+                                    onclick="addLevel('high')"> Moderately
+                            </button>
+                            <button name="level" type="button" class="btn btn-secondary very-high"
+                                    onclick="addLevel('very-high')"> Extremely
+                            </button>
+                            <!--<button name="level" type="button" class="btn btn-secondary very-high"-->
+                                    <!--onclick="addLevel('very-high')"> very high-->
+                            <!--</button>-->
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+
+{% block js %}
+
+<script type="text/javascript">
+
+    var chart;
+
+    $('#symptom_select').val('');
+    $('#symptom_select').val([]);
+    var symptoms = {};
+
+    var selected_symptom = null;
+
+
+    //    $('#symptom_select').select2({placeholder: "Select Month"});
+    //
+    //
+    //    $("#symptom_select").select2({
+    //        placeholder: "Select a State"
+    //    });
+    //
+    //    $('select').select2({
+    //        minimumResultsForSearch: -1,
+    //        placeholder: function () {
+    //            $(this).data('placeholder');
+    //        }
+    //    });
+
+    $('#symptom_select').on('select2:select', function (e) {
+        // Do something
+        selected_symptom = e.params.data.text;
+        document.getElementById('modalHeader').innerHTML = "<h3>"+selected_symptom+"</h3><p>How much do you feel this symptom?</p>";
+//        document.getElementById('modalHeader').innerHTML = "How much do you feel "+selected_symptom.toLowerCase()+ "?";
+        $('#myModal').modal();
+    });
+
+    $('#symptom_select').on('select2:unselect', function (e) {
+        // Do something
+        selected_symptom = e.params.data.text;
+        delete symptoms[selected_symptom];
+//            console.log(symptoms);
+    });
+
+    $('#symptom_select').on('change', function (e) {
+        $(".select2-selection__choice").each(function () {
+            $(this).addClass(symptoms[$(this).text().replace("×", "")]);
+        });
+    });
+
+    function addLevel(level) {
+        $(function () {
+            $('#myModal').modal('toggle');
+        });
+        symptoms[selected_symptom] = level;
+//            console.log(symptoms);
+        $(".select2-selection__choice").each(function () {
+            $(this).addClass(symptoms[$(this).text().replace("×", "")]);
+        });
+    }
+
+    function searchDisease() {
+        $.ajax({
+            type: "POST",
+            url: '/searchDisease',
+            data: JSON.stringify(
+                {
+                    symptoms: symptoms
+                }
+            ),
+            contentType: 'application/json;charset=UTF-8',
+            success: function (result) {
+//				window.location.href = result;
+                drawChart(result.series, result.labels)
+            }
+        });
+        return false;
+
+    }
+
+    function searchSymptom() {
+        $.ajax({
+            type: "POST",
+            url: '/searchSymptom',
+            data: JSON.stringify(
+                {
+                    symptoms: symptoms
+                }
+            ),
+            contentType: 'application/json;charset=UTF-8',
+            success: function (result) {
+//				window.location.href = result;
+                alert(result);
+            }
+        });
+        return false;
+
+    }
+
+
+    function drawChart(series, labels) {
+
+        $('#chart').remove();
+        $("#chart-parent").append("<div id=\"chart\"></div>");
+
+        var options = {
+            chart: {
+                type: 'donut',
+                customScale: 0.4
+            },
+            series: series,
+            labels: labels,
+            responsive: [{
+                breakpoint: 480,
+                options: {
+                    chart: {
+                        width: 500
+                    },
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }]
+        };
+
+        chart = new ApexCharts(
+            document.querySelector("#chart"),
+            options
+        );
+
+        chart.render();
+
+    }
+
+</script>
+
+{% endblock %}
